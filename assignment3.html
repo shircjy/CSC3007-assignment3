@@ -1,0 +1,139 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Singapore Population</title>
+</head>
+<body>
+    <h2><center>Singapore Population</center></h2>
+<svg></svg>
+<style>
+    div.tooltip {
+     position: absolute;
+     text-align: center;
+     padding: .5rem;
+     background: #FFFFFF;
+     color: #313639;
+     border: 1px solid #313639;
+     border-radius: 8px;
+     pointer-events: none;
+     font-size: 1.3rem;
+}
+</style>
+<div class="tooltip"></div>
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<script src="https://d3js.org/d3-scale-chromatic.v1.min.js"></script>
+<script src="https://d3js.org/d3-geo-projection.v2.min.js"></script>
+<script>
+    let width = 1000, height = 500;
+    
+    let svg = d3.select("svg").attr("viewBox", "0 0 " + width + " " + height)
+    
+    // Load external data
+    Promise.all([d3.json("https://chi-loong.github.io/CSC3007/assignments/sgmap.json"), d3.csv("population2021.csv")]).then(data => {
+    
+    //Map data list
+    var mapdata = data[0];
+    //Population data list
+    var popdata = data[1];
+
+    // Range & Population Colors
+    var domain_range = [0, 1, 500, 1000, 2500, 5000, 10000]
+    var color = d3.scaleThreshold()
+        .domain(domain_range)
+        .range(d3.schemeYlGnBu[8]);
+
+    // Get population of selected zone
+    function getPopdata(zone){
+        var population = "";
+        for(let i = 0 ; i < data[1].length ; i++) {
+            if(popdata[i].Subzone.toUpperCase().includes(zone)){
+                if(popdata[i].Population == '-'){
+                    population = 0;
+                    break;
+                }
+                else {
+                    population = popdata[i].Population;
+                    break;
+                }
+            }
+            else{
+                population = 0;
+            }
+        }
+        return population;
+    }
+
+    // Map and projection
+    var projection = d3.geoMercator()
+        .center([103.851959, 1.290270])
+        .fitExtent([[20, 20], [980, 580]], data[0]);
+    
+    let geopath = d3.geoPath().projection(projection);
+    
+    svg.append("g")
+        .attr("id", "districts")
+        .selectAll("path")
+        .data(data[0].features)
+        .enter()
+        .append("path")
+        .attr("d", geopath)
+        // set the color of each country
+        .attr("fill", function (d) {
+            x = getPopdata(d.properties.Name);
+            return color(x);
+        })
+    
+    // Mouse over
+    .on("mouseover", (event, d) => {
+        d3.select(".tooltip")
+        .text(d.properties.Name + " : " + getPopdata(d.properties.Name))
+        .style("position", "absolute")
+        .style("font-family", "Arial")
+        .style("background", "Grey")
+        .style("left", (event.pageX) + "px")
+        .style("top", (event.pageY) + "px")
+        d3.select(event.currentTarget)
+        .style("stroke","black")
+        .style("stroke-width", "3");
+    })
+
+    // Mouse out
+    .on("mouseout", (event, d) => {
+        d3.select(".tooltip")
+        .text("");
+        d3.select(event.currentTarget)
+        .style("stroke", "#fff")
+        .style("stroke-width", "0");
+    
+    })
+
+    // Legends
+    var legend_labels = ["0", "1 - 249", "250 - 999", "1000 - 2499", "2500 - 4999", "5000 - 9999", ">10000"]
+    var legend = svg.selectAll("g.legend")
+    .data(domain_range)
+    .enter().append("g")
+    .attr("class", "legend");
+    
+    var l_weight = 20, l_height = 20;
+    
+    legend.append("rect")
+    .attr("x", width - 130)
+    .attr("y", function(d, i){ return height - (i*l_height) - 2*l_height;})
+    .attr("width", l_weight)
+    .attr("height", l_height)
+    .style("fill", function(d, i) { return color(d); })
+    .style("opacity", 1);
+    
+    legend.append("text")
+    .attr("x", width - 100)
+    .style("font-family", "Arial")
+    .attr("y", function(d, i){ return height - (i*l_height) - l_height - 4;})
+    .text(function(d, i){ return legend_labels[i]; }); 
+
+})  
+</script>
+
+</body>
+</html>
